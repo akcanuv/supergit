@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supergit"
+version = "0.1.0"
+description = "An intelligent file organiser"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.6"
+authors = [
+  { name = "Anubhab Chakraborty", email = "anuv@akcanuv.com" }
+]
+dependencies = [
+  "anthropic>=0.39.0",
+  "GitPython>=3.1.43",
+  "PyYAML>=6.0.2"
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+
+[project.urls]
+homepage = "https://github.com/akcanuv/supergit"
+
+[project.entry-points.console_scripts]
+supergit = "supergit.supergit:main"
