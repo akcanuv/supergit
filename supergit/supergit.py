@@ -7,6 +7,7 @@ import yaml
 import json
 import base64
 import argparse
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
@@ -135,7 +136,7 @@ def update_supergit_yaml(directory: str):
 
 def place_file(file_path: str, root_dir: str, target_directory: str, target_filename: str):
     """
-    Moves the file to the target directory with the target filename and commits the change.
+    Moves the file to the target directory within the root directory with the target filename and commits the change.
     """
     # Ensure target_directory is relative to root_dir
     target_directory_rel = os.path.relpath(target_directory, root_dir)
@@ -217,17 +218,32 @@ Available Files:
     result = assistant_reply.strip()
     return result
 
-
 def initialize_supergit(root_dir: str):
     """
     Initializes the supergit directories by creating or updating .supergit.yaml files
     with directory information and updates from the LLM.
+    Also initializes the root directory as a Git repository if not already one,
+    ignores specific system files and directories during initialization,
+    and commits the changes to the Git repository.
     """
+    # Check if the root directory is a Git repository; if not, initialize it
+    if not os.path.isdir(os.path.join(root_dir, '.git')):
+        subprocess.run(['git', 'init', root_dir], check=True)
+        print(f"Initialized Git repository in {root_dir}")
+
+    # Define the list of directories and files to ignore
+    ignore_names = {'.git', '.backup', '.DS_Store'}
+
     # First, traverse the directory tree and collect initial data
     directory_data = {}  # key: directory path, value: data dict
 
     for dirpath, dirnames, filenames in os.walk(root_dir):
-        entries = [name for name in dirnames + filenames if not name.startswith('.') and name != '.supergit.yaml']
+        # Modify dirnames in-place to exclude ignored names
+        dirnames[:] = [d for d in dirnames if d not in ignore_names and not d.startswith('.')]
+        # Exclude ignored filenames
+        filenames = [f for f in filenames if f not in ignore_names and not f.startswith('.')]
+
+        entries = dirnames + filenames
         directory_name = os.path.basename(dirpath)
         data = {
             'directory_name': directory_name,
@@ -311,25 +327,63 @@ Directories:
         with open(supergit_yaml_path, 'w') as f:
             yaml.dump(supergit_yaml_content, f)
 
+    # Optionally, update the .gitignore file
+    gitignore_path = os.path.join(root_dir, '.gitignore')
+    ignore_patterns = ['.backup/', '.DS_Store']
+    existing_patterns = set()
+
+    if os.path.isfile(gitignore_path):
+        with open(gitignore_path, 'r') as f:
+            existing_patterns = set(line.strip() for line in f if line.strip())
+
+    with open(gitignore_path, 'a') as f:
+        for pattern in ignore_patterns:
+            if pattern not in existing_patterns:
+                f.write(pattern + '\n')
+                print(f"Added '{pattern}' to .gitignore")
+
+    # Now, add and commit the changes to Git
+    try:
+        # Add all files to the Git index
+        subprocess.run(['git', '-C', root_dir, 'add', '.'], check=True)
+        # Commit the changes
+        subprocess.run(['git', '-C', root_dir, 'commit', '-m', 'Initialize supergit repository with .supergit.yaml files'], check=True)
+        print("Committed changes to Git repository.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while committing changes: {e}")
+        sys.exit(1)
+
 def main():
     """
     Main function to handle command-line arguments.
     """
-    parser = argparse.ArgumentParser(description='Supergit: An intelligent file organizer.')
-    parser.add_argument('--add', '-a', help='Path to the file to add.')
-    parser.add_argument('--instruct', '-i', help='Additional instruction for the file.', default=None)
-    parser.add_argument('--init', action='store_true', help='Initialize the supergit directories.')
-    parser.add_argument('--reindex', action='store_true', help='Reindex the supergit directories.')
-    parser.add_argument('--dir', help='Directory to use as root or to query.')
-    parser.add_argument('query', nargs='?', help='Natural language query.')
+    parser = argparse.ArgumentParser(description='supergit: An intelligent file organizer.')
+    subparsers = parser.add_subparsers(dest='command', help='Sub-commands')
+
+    # Add subcommand for 'init'
+    parser_init = subparsers.add_parser('init', help='Initialize the supergit directories.')
+    parser_init.add_argument('--dir', required=True, help='Directory to use as root.')
+
+    # Add subcommand for 'reindex'
+    parser_reindex = subparsers.add_parser('reindex', help='Reindex the supergit directories.')
+    parser_reindex.add_argument('--dir', required=True, help='Directory to use as root.')
+
+    # Add subcommand for 'add'
+    parser_add = subparsers.add_parser('add', help='Add a file to the supergit repository.')
+    parser_add.add_argument('--file', '-f', required=True, help='Path to the file to add.')
+    parser_add.add_argument('--dir', required=True, help='Root directory of the supergit repository.')
+    parser_add.add_argument('--instruct', '-i', help='Additional instruction for the file.', default=None)
+
+    # Add subcommand for 'query'
+    parser_query = subparsers.add_parser('query', help='Query the supergit repository.')
+    parser_query.add_argument('--dir', required=True, help='Root directory to query.')
+    parser_query.add_argument('query', help='Natural language query.')
 
     args = parser.parse_args()
 
-    # Determine the root directory
-    root_dir = args.dir if args.dir else '.'
-
-    if args.add:
-        file_path = args.add
+    if args.command == 'add':
+        root_dir = args.dir
+        file_path = args.file
         if not os.path.exists(file_path):
             print("File does not exist.")
             sys.exit(1)
@@ -342,20 +396,19 @@ def main():
         place_file(file_path, root_dir, target_directory, target_filename)
         print(f"File placed in {os.path.join(root_dir, target_directory)} as {target_filename} and committed.")
 
-
-    elif args.init:
+    elif args.command == 'init':
+        root_dir = args.dir
         initialize_supergit(root_dir)
         print("Initialized supergit directories.")
 
-    elif args.reindex:
+    elif args.command == 'reindex':
+        root_dir = args.dir
         reindex_supergit(root_dir)
         print("Reindexed supergit directories.")
 
-    elif args.query:
-        if not args.dir:
-            print("Please specify the directory to query using --dir.")
-            sys.exit(1)
-        result = find_files_by_query(root_dir, args.dir, args.query)
+    elif args.command == 'query':
+        root_dir = args.dir
+        result = find_files_by_query(root_dir, root_dir, args.query)
         print(f"\n{result}")
 
     else:
