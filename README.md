@@ -1,9 +1,9 @@
-supergit
+# supergit
 The database of the future.
 
 ## Overview
 
-Supergit is an intelligent file organizer that helps manage and organize files within a repository using advanced AI capabilities. It leverages the Anthropic API to provide contextual file organization and management.
+supergit is an intelligent file organizer that helps manage and organize files within a repository using LLM. It leverages the Anthropic API to provide contextual file organization and management.
 
 ## Features
 
@@ -24,7 +24,12 @@ Supergit is an intelligent file organizer that helps manage and organize files w
 ## Installation
 
 1. Clone the repository.
-2. Set your Anthropic API key:
+2. Install the repository.
+   ```
+   cd supergit
+   pip install -e .
+   ```
+3. Set your Anthropic API key:
    ```
    export ANTHROPIC_API_KEY='your_api_key_here'
    ```
@@ -36,7 +41,7 @@ Supergit is an intelligent file organizer that helps manage and organize files w
 To initialize a supergit repository:
 
 ```
-python supergit.py init --dir /path/to/root
+supergit init --dir /path/to/root
 ```
 
 ### Add a File
@@ -44,7 +49,7 @@ python supergit.py init --dir /path/to/root
 To add a file to the supergit repository:
 
 ```
-python supergit.py add --file /path/to/file --dir /path/to/root
+supergit add --file /path/to/file --dir /path/to/root
 ```
 
 ### Reindex Directories
@@ -52,7 +57,7 @@ python supergit.py add --file /path/to/file --dir /path/to/root
 To reindex the supergit directories:
 
 ```
-python supergit.py reindex --dir /path/to/root
+supergit reindex --dir /path/to/root
 ```
 
 ### Query Files
@@ -60,7 +65,7 @@ python supergit.py reindex --dir /path/to/root
 To query files in the supergit repository:
 
 ```
-python supergit.py query --dir /path/to/root "your query here"
+supergit query --dir /path/to/root "your query here"
 ```
 
 ## License
