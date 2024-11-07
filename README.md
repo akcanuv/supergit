@@ -1,6 +1,8 @@
 # supergit
 The database of the future.
 
+<img src="https://github.com/user-attachments/assets/429fbfbe-6bee-45da-969c-225d9dfb2397" width="300" />
+
 ## Overview
 
 supergit is an intelligent file organizer that helps manage and organize files within a repository using LLM. It leverages the Anthropic API to provide contextual file organization and management.
